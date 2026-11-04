@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>林诗芸天天开心！</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #starCanvas { z-index: 0; }
+        #heartCanvas { z-index: 1; }
+        #fwCanvas { z-index: 2; }
+        #text-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+            text-align: center;
+            pointer-events: none;
+            width: 100%;
+        }
+        h1 {
+            color: #fff;
+            font-size: 3.5rem;
+            text-shadow:
+                0 0 10px #ff0055,
+                0 0 20px #ff0055,
+                0 0 40px #ff0055,
+                0 0 80px #ff0055;
+            animation: textPulse 2s ease-in-out infinite;
+            margin: 0;
+            letter-spacing: 8px;
+        }
+        @keyframes textPulse {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; letter-spacing: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="text-container">
+        <h1>林诗芸天天开心！</h1>
+    </div>
+    <canvas id="starCanvas"></canvas>
+    <canvas id="heartCanvas"></canvas>
+    <canvas id="fwCanvas"></canvas>
+
+    <script>
+        // ==================== 星空背景 ====================
+        var sCanvas = document.getElementById("starCanvas");
+        var sCtx = sCanvas.getContext("2d");
+        var sW, sH;
+
+        function resizeStar() {
+            sW = sCanvas.width = window.innerWidth;
+            sH = sCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeStar);
+        resizeStar();
+
+        // 生成星星
+        var stars = [];
+        var starCount = 200;
+        for (var i = 0; i < starCount; i++) {
+            stars.push({
+                x: Math.random() * sW,
+                y: Math.random() * sH,
+                size: Math.random() * 1.5 + 0.3,
+                alpha: Math.random(),
+                speed: Math.random() * 0.005 + 0.002,
+                direction: Math.random() > 0.5 ? 1 : -1
+            });
+        }
+
+        // 流星
+        var shootingStars = [];
+        function createShootingStar() {
+            if (Math.random() < 0.003) { // 出现概率
+                shootingStars.push({
+                    x: Math.random() * sW * 0.8,
+                    y: Math.random() * sH * 0.3,
+                    len: Math.random() * 80 + 40,
+                    speed: Math.random() * 8 + 6,
+                    alpha: 1,
+                    angle: Math.PI / 4 + (Math.random() - 0.5) * 0.3
+                });
+            }
+        }
+
+        function drawStars() {
+            // 深邃渐变背景
+            var grad = sCtx.createLinearGradient(0, 0, 0, sH);
+            grad.addColorStop(0, "#0a0015");
+            grad.addColorStop(0.5, "#050010");
+            grad.addColorStop(1, "#020008");
+            sCtx.fillStyle = grad;
+            sCtx.fillRect(0, 0, sW, sH);
+
+            // 绘制星星（闪烁效果）
+            stars.forEach(function(s) {
+                s.alpha += s.speed * s.direction;
+                if (s.alpha >= 1) { s.alpha = 1; s.direction = -1; }
+                if (s.alpha <= 0.2) { s.alpha = 0.2; s.direction = 1; }
+
+                sCtx.beginPath();
+                sCtx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                sCtx.fillStyle = "rgba(255, 255, 255, " + s.alpha + ")";
+                sCtx.fill();
+            });
+
+            // 绘制流星
+            createShootingStar();
+            for (var i = shootingStars.length - 1; i >= 0; i--) {
+                var ss = shootingStars[i];
+                var endX = ss.x + Math.cos(ss.angle) * ss.len;
+                var endY = ss.y + Math.sin(ss.angle) * ss.len;
+
+                var lineGrad = sCtx.createLinearGradient(ss.x, ss.y, endX, endY);
+                lineGrad.addColorStop(0, "rgba(255, 255, 255, 0)");
+                lineGrad.addColorStop(1, "rgba(255, 255, 255, " + ss.alpha + ")");
+
+                sCtx.beginPath();
+                sCtx.moveTo(ss.x, ss.y);
+                sCtx.lineTo(endX, endY);
+                sCtx.strokeStyle = lineGrad;
+                sCtx.lineWidth = 1.5;
+                sCtx.stroke();
+
+                ss.x += Math.cos(ss.angle) * ss.speed;
+                ss.y += Math.sin(ss.angle) * ss.speed;
+                ss.alpha -= 0.015;
+
+                if (ss.alpha <= 0 || ss.x > sW || ss.y > sH) {
+                    shootingStars.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+
+
+        // ==================== 3D 旋转粒子爱心 ====================
+        var hCanvas = document.getElementById("heartCanvas");
+        var hCtx = hCanvas.getContext("2d");
+        var hW, hH;
+
+        function resizeHeart() {
+            hW = hCanvas.width = window.innerWidth;
+            hH = hCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeHeart);
+        resizeHeart();
+
+        function heart3D(u, v) {
+            var x = 16 * Math.pow(Math.sin(u), 3) * Math.sin(v);
+            var y = -(13 * Math.cos(u) - 5 * Math.cos(2*u) - 2 * Math.cos(3*u) - Math.cos(4*u)) * Math.sin(v);
+            var z = 8 * Math.cos(v);
+            return { x, y, z };
+        }
+
+        var heartParticles = [];
+        var totalParticles = 600;
+        for (var i = 0; i < totalParticles; i++) {
+            var u = Math.random() * Math.PI * 2;
+            var v = Math.random() * Math.PI;
+            var p = heart3D(u, v);
+            heartParticles.push({
+                x: p.x, y: p.y, z: p.z,
+                size: Math.random() * 2 + 1,
+                hue: Math.random() * 40 + 330,
+                brightness: Math.random() * 30 + 60
+            });
+        }
+
+        var fillParticles = [];
+        for (var i = 0; i < 300; i++) {
+            var u = Math.random() * Math.PI * 2;
+            var v = Math.random() * Math.PI;
+            var r = Math.random() * 0.8;
+            var p = heart3D(u, v);
+            fillParticles.push({
+                x: p.x * r, y: p.y * r, z: p.z * r,
+                size: Math.random() * 1.5 + 0.5,
+                hue: Math.random() * 30 + 340,
+                brightness: Math.random() * 20 + 40
+            });
+        }
+
+        var angleY = 0;
+        var angleX = 0.3;
+
+        function drawHeart() {
+            hCtx.clearRect(0, 0, hW, hH);
+            var time = Date.now() * 0.001;
+            var beat = 1 + Math.sin(time * 3) * 0.06;
+            var scale = Math.min(hW, hH) * 0.018 * beat;
+
+            var glow = hCtx.createRadialGradient(hW/2, hH/2, 0, hW/2, hH/2, 250 * beat);
+            glow.addColorStop(0, "rgba(255, 0, 60, 0.15)");
+            glow.addColorStop(0.5, "rgba(255, 0, 60, 0.05)");
+            glow.addColorStop(1, "rgba(0,0,0,0)");
+            hCtx.fillStyle = glow;
+            hCtx.fillRect(0, 0, hW, hH);
+
+            angleY += 0.015;
+
+            var allP = heartParticles.concat(fillParticles);
+            var projected = [];
+
+            allP.forEach(function(p) {
+                var x1 = p.x * Math.cos(angleY) - p.z * Math.sin(angleY);
+                var z1 = p.x * Math.sin(angleY) + p.z * Math.cos(angleY);
+                var y1 = p.y * Math.cos(angleX) - z1 * Math.sin(angleX);
+                var z2 = p.y * Math.sin(angleX) + z1 * Math.cos(angleX);
+
+                var perspective = 400 / (400 + z2);
+                var px = x1 * perspective * scale + hW / 2;
+                var py = y1 * perspective * scale + hH / 2;
+
+                projected.push({ px, py, z: z2, size: p.size * perspective, hue: p.hue, brightness: p.brightness });
+            });
+
+            projected.sort(function(a, b) { return a.z - b.z; });
+
+            projected.forEach(function(p) {
+                var alpha = 0.3 + (p.z + 20) / 40 * 0.7;
+                alpha = Math.max(0.2, Math.min(1, alpha));
+                hCtx.beginPath();
+                hCtx.arc(p.px, p.py, p.size, 0, Math.PI * 2);
+                hCtx.fillStyle = "hsla(" + p.hue + ", 100%, " + p.brightness + "%, " + alpha + ")";
+                hCtx.fill();
+            });
+
+            requestAnimationFrame(drawHeart);
+        }
+        drawHeart();
+
+
+        // ==================== 烟花系统 ====================
+        var fwCanvas = document.getElementById("fwCanvas");
+        var fwCtx = fwCanvas.getContext("2d");
+        var fwW, fwH;
+
+        function resizeFw() {
+            fwW = fwCanvas.width = window.innerWidth;
+            fwH = fwCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeFw);
+        resizeFw();
+
+        var fireworks = [];
+        var sparks = [];
+
+        class Firework {
+            constructor() {
+                this.x = Math.random() * fwW * 0.8 + fwW * 0.1;
+                this.y = fwH;
+                this.targetY = Math.random() * fwH * 0.35 + fwH * 0.05;
+                this.speed = Math.random() * 2 + 5;
+                this.hue = Math.random() * 360;
+                this.trail = [];
+                this.dead = false;
+            }
+            update() {
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 8) this.trail.shift();
+                this.y -= this.speed;
+                if (this.y <= this.targetY) {
+                    this.dead = true;
+                    this.explode();
+                }
+            }
+            explode() {
+                var count = 100 + Math.floor(Math.random() * 60);
+                for (var i = 0; i < count; i++) {
+                    sparks.push(new Spark(this.x, this.y, this.hue));
+                }
+                if (Math.random() < 0.3) {
+                    for (var i = 0; i < 30; i++) {
+                        sparks.push(new Spark(this.x, this.y, 0, true));
+                    }
+                }
+            }
+            draw() {
+                for (var i = 0; i < this.trail.length; i++) {
+                    var alpha = i / this.trail.length;
+                    fwCtx.beginPath();
+                    fwCtx.arc(this.trail[i].x, this.trail[i].y, 2, 0, Math.PI * 2);
+                    fwCtx.fillStyle = "hsla(" + this.hue + ", 100%, 70%, " + alpha + ")";
+                    fwCtx.fill();
+                }
+                fwCtx.beginPath();
+                fwCtx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                fwCtx.fillStyle = "#fff";
+                fwCtx.fill();
+            }
+        }
+
+        class Spark {
+            constructor(x, y, hue, isWhite) {
+                this.x = x;
+                this.y = y;
+                this.hue = hue;
+                this.isWhite = isWhite || false;
+                var angle = Math.random() * Math.PI * 2;
+                var speed = Math.random() * 5 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.012 + 0.008;
+                this.gravity = 0.04;
+                this.trail = [];
+            }
+            update() {
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 5) this.trail.shift();
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.vx *= 0.98;
+                this.alpha -= this.decay;
+            }
+            draw() {
+                for (var i = 0; i < this.trail.length; i++) {
+                    var a = (i / this.trail.length) * this.alpha * 0.5;
+                    fwCtx.beginPath();
+                    fwCtx.arc(this.trail[i].x, this.trail[i].y, 1, 0, Math.PI * 2);
+                    fwCtx.fillStyle = this.isWhite
+                        ? "rgba(255,255,255," + a + ")"
+                        : "hsla(" + this.hue + ", 100%, 60%, " + a + ")";
+                    fwCtx.fill();
+                }
+                fwCtx.beginPath();
+                fwCtx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+                fwCtx.fillStyle = this.isWhite
+                    ? "rgba(255,255,255," + this.alpha + ")"
+                    : "hsla(" + this.hue + ", 100%, 70%, " + this.alpha + ")";
+                fwCtx.fill();
+            }
+        }
+
+        function loopFireworks() {
+            fwCtx.globalCompositeOperation = 'destination-out';
+            fwCtx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            fwCtx.fillRect(0, 0, fwW, fwH);
+            fwCtx.globalCompositeOperation = 'lighter';
+
+            if (Math.random() < 0.025) {
+                fireworks.push(new Firework());
+            }
+
+            for (var i = fireworks.length - 1; i >= 0; i--) {
+                fireworks[i].update();
+                fireworks[i].draw();
+                if (fireworks[i].dead) fireworks.splice(i, 1);
+            }
+            for (var j = sparks.length - 1; j >= 0; j--) {
+                sparks[j].update();
+                sparks[j].draw();
+                if (sparks[j].alpha <= 0) sparks.splice(j, 1);
+            }
+            requestAnimationFrame(loopFireworks);
+        }
+        loopFireworks();
+    </script>
+</body>
+</html>
